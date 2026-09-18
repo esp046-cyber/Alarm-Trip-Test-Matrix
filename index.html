@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0d1b24">
+<title>Alarm &amp; Trip Test Matrix</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="lamp" id="lamp"></span>
+    <div>
+      <h1>Alarm &amp; Trip Test Matrix</h1>
+      <p id="ctx">No project open</p>
+    </div>
+  </div>
+  <div class="net" id="net"><span class="dot"></span><span id="netTxt">Online</span></div>
+</header>
+
+<main id="view" tabindex="-1"></main>
+
+<nav class="tabs" id="tabs"></nav>
+
+<div class="modal" id="modal" hidden>
+  <div class="sheet" role="dialog" aria-modal="true">
+    <div class="sheetHead"><h2 id="modalTitle"></h2><button class="x" id="modalClose" aria-label="Close">&times;</button></div>
+    <div class="sheetBody" id="modalBody"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="app.js"></script>
+</body>
+</html>
