@@ -1,6 +1,6 @@
 /* Alarm & Trip Test Matrix - offline cache */
-var CACHE = 'atm-v3';
-var ASSETS = ['./', './index.html', './style.css?v=3', './app.js?v=3', './manifest.json',
+var CACHE = 'atm-v4';
+var ASSETS = ['./', './index.html', './style.css?v=4', './app.js?v=4', './manifest.json',
   './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png'];
 
 self.addEventListener('install', function (e) {

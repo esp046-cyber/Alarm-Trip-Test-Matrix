@@ -361,6 +361,9 @@ function testForm(v, itemId) {
       '<div class="row" style="margin-top:8px">' + btn('Stamp trigger', 'stamp', 'data-f="triggered"', 'sm') +
       btn('Stamp ack', 'stamp', 'data-f="acked"', 'sm') + btn('Stamp reset', 'stamp', 'data-f="reset"', 'sm') + '</div></div>' +
 
+    '<div class="card"><h3>Location</h3><p class="mute small">Tags where this test was physically performed — useful across large sites with several areas.</p>' +
+      locBlock(a) + '</div>' +
+
     '<div class="card"><h3>Setpoint verification</h3>' +
       '<div class="grid">' +
       '<div><label>Configured setpoint</label><input value="' + esc((it.setpoint || '') + ' ' + (it.unit || '')) + '" readonly></div>' +
@@ -429,6 +432,37 @@ function testForm(v, itemId) {
 }
 function kv(k, v) { return '<div><label style="margin:0">' + k + '</label><div>' + esc(v || '—') + '</div></div>'; }
 function tsF(f, label, a) { return '<div><label for="t_' + f + '">' + label + '</label><input id="t_' + f + '" type="datetime-local" value="' + esc(a[f] || '') + '"></div>'; }
+function locBlock(a) {
+  var l = a.location;
+  if (!l) {
+    return '<button class="wide" data-act="capLoc">Capture current location</button>' +
+      '<p class="mute small" id="locMsg" style="margin-top:6px"></p>';
+  }
+  var mapUrl = 'https://www.google.com/maps?q=' + l.lat + ',' + l.lng;
+  return '<div class="grid">' + kv('Latitude', l.lat.toFixed(6)) + kv('Longitude', l.lng.toFixed(6)) +
+    kv('Accuracy', (l.accuracy ? Math.round(l.accuracy) + ' m' : '—')) + kv('Captured', fmt(l.captured)) + '</div>' +
+    '<div class="row" style="margin-top:8px">' +
+    '<a class="btn sm" href="' + esc(mapUrl) + '" target="_blank" rel="noopener" style="display:inline-block;text-decoration:none;text-align:center">View on map</a>' +
+    btn('Recapture', 'capLoc', '', 'sm') + btn('Clear', 'clearLoc', '', 'sm dang') + '</div>' +
+    '<p class="mute small" id="locMsg" style="margin-top:6px"></p>';
+}
+function captureLocation() {
+  collectTest();
+  var msg = $('#locMsg');
+  if (!('geolocation' in navigator)) { if (msg) msg.textContent = 'This device does not support location.'; return; }
+  if (msg) msg.textContent = 'Getting location…';
+  navigator.geolocation.getCurrentPosition(function (pos) {
+    S.draft.location = {
+      lat: pos.coords.latitude, lng: pos.coords.longitude,
+      accuracy: pos.coords.accuracy, captured: nowISO()
+    };
+    render(); toast('Location captured');
+  }, function (err) {
+    if (msg) msg.textContent = err.code === 1
+      ? 'Location permission was denied. Allow location access in your browser/app settings to use this.'
+      : 'Could not get a location fix. Move to an open area and try again.';
+  }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 });
+}
 function ynF(f, label, a) {
   return '<div style="margin-bottom:8px"><label style="margin-bottom:4px">' + label + '</label><div class="seg">' +
     [['YES', true], ['NO', false], ['—', null]].map(function (o) {
@@ -480,6 +514,8 @@ function history(itemId) {
         '<span class="tag t-' + a.result.replace(/[ /]/g, '-') + '">' + a.result + '</span></div>' +
         '<div class="mute small">' + fmt(a.completed || a.started) + ' · ' + esc(a.engineer || 'unsigned') + '</div>' +
         (a.tested ? '<p class="small">Tested value: ' + esc(a.tested) + ' ' + esc(it.unit || '') + '</p>' : '') +
+        (a.location ? '<p class="small">Location: ' + a.location.lat.toFixed(5) + ', ' + a.location.lng.toFixed(5) +
+          ' (±' + Math.round(a.location.accuracy || 0) + ' m)</p>' : '') +
         (a.failDesc ? '<p class="small">Failure: ' + esc(a.failDesc) + '</p>' : '') +
         (a.comments ? '<p class="small">' + esc(a.comments) + '</p>' : '') + '</div>';
     }).join('') : '<p class="empty">No attempts recorded yet.</p>') +
@@ -595,13 +631,17 @@ function exportMatrix(kind) {
 }
 function exportResults(onlyFailed) {
   var rows = [['ID', 'Type', 'Tag', 'Equipment', 'Description', 'Setpoint', 'Unit', 'Attempt', 'Tested Value',
-    'Tolerance', 'Deviation', 'Actual', 'Acknowledged', 'Reset OK', 'HMI Result', 'Result', 'Comments', 'Engineer', 'Completed']];
+    'Tolerance', 'Deviation', 'Actual', 'Acknowledged', 'Reset OK', 'HMI Result', 'Result', 'Latitude', 'Longitude',
+    'Accuracy (m)', 'Comments', 'Engineer', 'Completed']];
   S.items.forEach(function (i) {
     attemptsFor(i.id).forEach(function (a) {
       if (onlyFailed && a.result !== 'FAILED') return;
       var d = (num(i.setpoint) !== null && num(a.tested) !== null) ? Math.round((num(a.tested) - num(i.setpoint)) * 1e6) / 1e6 : '';
+      var loc = a.location || {};
       rows.push([i.itemId, i.type, i.tag, i.equipment, i.desc, i.setpoint, i.unit, a.n, a.tested, a.tol, d,
-        a.actualState || a.actualTrip || '', yn(a.ackDone), yn(a.resetOk), hmiSummary(a), a.result, a.comments, a.engineer, a.completed]);
+        a.actualState || a.actualTrip || '', yn(a.ackDone), yn(a.resetOk), hmiSummary(a), a.result,
+        loc.lat !== undefined ? loc.lat.toFixed(6) : '', loc.lng !== undefined ? loc.lng.toFixed(6) : '',
+        loc.accuracy !== undefined ? Math.round(loc.accuracy) : '', a.comments, a.engineer, a.completed]);
     });
   });
   if (rows.length === 1) return toast('There are no matching test records to export');
@@ -714,6 +754,8 @@ function reportHTML(kind) {
          ['Reset successful', a.resetOk === undefined ? '' : yn(a.resetOk)], ['HMI / SCADA', hmiSummary(a)],
          ['Trigger time', a.triggered && fmt(a.triggered)], ['Acknowledged at', a.acked && fmt(a.acked)],
          ['Reset at', a.reset && fmt(a.reset)], ['Completed', a.completed && fmt(a.completed)],
+         ['Location', a.location && (a.location.lat.toFixed(6) + ', ' + a.location.lng.toFixed(6) +
+           ' (±' + Math.round(a.location.accuracy || 0) + ' m)')],
          ['Comments', a.comments], ['Failure', a.failDesc], ['Corrective action', a.failAction],
          ['Engineer', a.engineer], ['Witness', a.witness]]
           .filter(function (r) { return r[1] !== '' && r[1] !== undefined && r[1] !== null && r[1] !== false; })
@@ -876,6 +918,8 @@ document.addEventListener('click', function (e) {
         collectTest(); S.draft.hmi = S.draft.hmi || {}; S.draft.hmi[t.dataset.i] = t.dataset.v; render(); break;
       case 'cl': break;
       case 'stamp': collectTest(); S.draft[t.dataset.f] = nowISO(); render(); break;
+      case 'capLoc': captureLocation(); break;
+      case 'clearLoc': collectTest(); delete S.draft.location; render(); break;
       case 'verdict':
         collectTest(); S.draft.result = t.dataset.v;
         if (S.draft.result !== 'IN PROGRESS') S.draft.completed = S.draft.completed || nowISO();

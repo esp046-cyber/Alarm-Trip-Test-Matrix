@@ -67,6 +67,10 @@ Retesting creates attempt #2, #3 and so on. Earlier results are never erased —
 
 Reports → pick a report. It opens in a new tab formatted for print, with project information, alarm/trip details, every attempt, deviations, HMI results, failures, corrective actions, captured signatures and a sign-off block. Print or save as PDF. CSV exports and a full JSON backup are on the same screen and in Settings.
 
+## Location stamps
+
+In the test runner, **Capture current location** records latitude, longitude and accuracy at the moment of testing, using the device's GPS. This is useful on large sites with several areas, so a report shows exactly where each test happened. It requires the browser to have location permission for the site — if it's denied, the app explains this and testing continues normally with the field left blank. Location never affects pass/fail; it's purely a record. A **View on map** link opens the point in Maps (needs a connection); the coordinates themselves are stored offline like everything else and appear in the full test report and the test-results CSV export.
+
 ## Data
 
 Everything is stored in IndexedDB in the browser and survives refresh, browser restart and app restart. Nothing leaves the device. Use **Export full backup** in Settings before wiping a device or moving to another one; **Import backup** validates the file and asks for confirmation before replacing anything.
